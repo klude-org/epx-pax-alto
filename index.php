@@ -1,0 +1,1 @@
+<?php include_once '-vnd/pax-alto/@.boot-php';

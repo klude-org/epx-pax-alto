@@ -1,0 +1,169 @@
+<?php # 0 + 0.3
+########################################################################################################################
+#region LICENSE
+    /* 
+                                               EPX-PAX-ALTO-START
+    PROVIDER : KLUDE PTY LTD
+    PACKAGE  : EPX-PAX
+    AUTHOR   : BRIAN PINTO
+    RELEASED : 2023-01-09
+    
+    The MIT License
+    
+    Copyright (c) 2017-2023 Klude Pty Ltd. https://klude.com.au
+    
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+    
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
+        
+    */
+#endregion
+# #######################################################################################################################
+#region START
+namespace _ {
+    
+    $E = (object)[];
+    $E->FW_MSTART = microtime(true);
+    $E->OB_OUT = \ob_get_level();
+    \ob_start();
+    $E->OB_TOP = \ob_get_level();
+} 
+#endregion
+# #######################################################################################################################
+#region STR Polyfill
+//* POLYFILL if not 8.0
+//* credits: https://stackoverflow.com/a/10473026
+//* credits: https://stackoverflow.com/a/7168986
+//* https://www.php.net/manual/en/function.str-starts-with.php
+//* https://github.com/laravel/framework/blob/8.x/src/Illuminate/Support/Str.php
+namespace { if(!\function_exists(str_starts_with::class)){ function str_starts_with(string $haystack, string $needle){
+    return ($haystack[0]??'') === ($needle[0]??'') 
+    ? (\substr_compare($haystack, $needle, 0, \strlen($needle)) === 0)
+    : false;
+}}}
+namespace { if(!\function_exists(str_ends_with::class)){ function str_ends_with(string $haystack, string $needle){
+    return \substr_compare($haystack, $needle, - \strlen($needle)) === 0;
+}}}
+namespace { if(!\function_exists(str_contains::class)){ function str_contains(string $haystack, string $needle){
+    return $haystack !== '' 
+        && $needle  !== '' 
+        && \strpos($haystack, $needle) !== false
+    ;
+}}}
+#endregion
+# #######################################################################################################################
+#region helpers
+namespace _ { if(!\function_exists(pathnorm::class)){ function pathnorm($expr, int $levels = 0){
+    return $levels 
+        ? \dirname(\str_replace('\\','/', (($expr[1]??null)===':')? \substr($expr,2) : $expr), $levels)
+        : \str_replace('\\','/', (($expr[1]??null)===':')? \substr($expr,2) : $expr)
+    ; 
+}}}
+#endregion
+# #######################################################################################################################
+#region BOOT
+namespace _ {
+    
+    const HTTP_CODE         = 0x00010000;
+    const FAULT_MASK        = 0x0000ffff;
+    const FAULT_CODE_ERROR  = 0x00000001;
+    const FAULT_CODE_EXIT   = 0x00000002;
+    const FAULT_CODE_DETAIL = 0x0000ffff;
+    const FAULT_LEVEL_OFF = 0;
+    const FAULT_LEVEL_DEFAULT = 5;
+    
+    if($f = (function(){
+        
+        \ini_set('display_errors', 1);
+        \ini_set('display_startup_errors', 1);
+        \error_reporting(E_ALL);
+        
+        try {
+            
+            empty($GLOBALS['_']) AND  $GLOBALS['_'] = [];
+            
+            \is_file($f = \dirname($_SERVER['SCRIPT_FILENAME'])."/.cfg-json")
+                AND ($GLOBALS['_'] = \array_replace_recursive(
+                    $GLOBALS['_'], 
+                    ((\json_decode(\file_get_contents($f), true)) ?? false) ?: [])
+                )
+            ;
+            
+            $this->ROOT_URL = ($_SERVER["REQUEST_SCHEME"] ?? ((\strtolower(($_SERVER['HTTPS'] ?? 'off') ?: 'off') === 'off') ? 'http' : 'https'))
+                .'://'
+                .$_SERVER['HTTP_HOST']
+            ;
+            
+            $this->EXE_DIR = \_\pathnorm(__DIR__);
+            $this->VND_DIR = \_\pathnorm(__DIR__, 1);
+            $this->BASE_DIR = \_\pathnorm($_SERVER['SCRIPT_FILENAME'], 1); //* BASE
+            $this->BASE_URP = \_\pathnorm(\rtrim(\dirname($_SERVER['SCRIPT_NAME']),'/\\').'/');
+            $this->BASE_URL = \trim("{$this->ROOT_URL}{$this->BASE_URP}",'/');
+            $this->DATA_DIR = "{$this->BASE_DIR}/-data"; //* DATA
+            \is_file($f = "{$this->DATA_DIR}/.cfg-json")
+                AND ($GLOBALS['_'] = \array_replace_recursive(
+                    $GLOBALS['_'], 
+                    ((\json_decode(\file_get_contents($f), true)) ?? false) ?: [])
+                )
+            ;
+            
+            $this->APP_DIR = "{$this->VND_DIR}/@-".($_GLOBALS['_']['APP_NAME'] ?? 'app');
+            $this->APP_URL = $this->BASE_URL;
+            $this->APP_KEY = '';
+            if(!\is_dir($this->APP_DIR)){
+                throw new \Exception("App not found for path '{$_SERVER['REQUEST_URI']}'",  0x602+\_\HTTP_CODE*404);
+            }
+            \is_file($f = "{$this->APP_DIR}/.cfg-json")
+                AND ($GLOBALS['_'] = \array_replace_recursive(
+                    $GLOBALS['_'], 
+                    ((\json_decode(\file_get_contents($f), true)) ?? false) ?: [])
+                )
+            ;
+            
+            $this->SESS_KEY = \md5($_SERVER['SCRIPT_FILENAME']);
+            
+            $ctr_base = "{$this->APP_DIR}/__";
+            $rsdu = trim(\substr(
+                \strtok($_SERVER['REQUEST_URI'],'?'),
+                \strlen(\rtrim(\dirname($_SERVER['SCRIPT_NAME'])))
+            ),'/');
+            if(\is_file($f = glob($sch = ($rsdu) 
+                ? "{$ctr_base}/{$rsdu}{/@,}{,.php,.html}" 
+                : "{$ctr_base}/@{.php,.html}"
+                , GLOB_BRACE
+            )[0] ?? false
+            )){
+                $this->CTR_FILE = $f;
+                return true;
+            }
+            
+        } finally {
+            define('_\E', (array) $this);
+            unset($GLOBALS['E']);
+            \set_include_path(\implode(PATH_SEPARATOR, [\_\E['APP_DIR'], \_\E['EXE_DIR'], \get_include_path()]));
+            \spl_autoload_extensions('.#-php,/@.#-php');
+            \spl_autoload_register();
+        }
+    })->bindTo($E)()){
+        (function(){
+            include_once \_\E['CTR_FILE'];
+        })->bindTo($GLOBALS['CTR'] = (object)[])();
+    } else {
+        throw new \Exception("Control not found for path '{$_SERVER['REQUEST_URI']}'",  0x602+\_\HTTP_CODE*404);
+    };
+}
+#endregion
+# #######################################################################################################################

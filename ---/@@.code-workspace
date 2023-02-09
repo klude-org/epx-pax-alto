@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": ".."
+		},
+		{
+			"path": "C:/fw/epx/vscode/vscode-php-7.3.4"
+		}
+	],
+	"settings": {
+		"window.title": "[ epx-pax-alto ] / ${folderName}",
+	}
+	
+	
+}
