@@ -11,3 +11,4 @@
 **/.local-*
 # composer vendor packages inside modules
 **/fw-*/*/vendor/
+**/fw/*/vendor/
