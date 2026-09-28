@@ -334,7 +334,10 @@ namespace _ { (function(){
                 exit(1);
             }
         } else {
-            if(!\is_dir($app_dir = \strtr($this->PLIB_DIR."/{$app}",'\\','/'))){
+            if(
+                !\is_dir($app_dir = \strtr(FW__SITE_DIR."/fw/{$app}",'\\','/'))
+                && !\is_dir($app_dir = \strtr($this->PLIB_DIR."/{$app}",'\\','/'))
+            ){
                 FW__IS_CLI OR \http_response_code(500);
                 echo FW__DBG >= 9 ? "500: Unable to locate application directory: {$app}" : "500: Internal Server Error";
                 exit(1);
