@@ -1,0 +1,13 @@
+# multiversion support
+/src-*
+# Legacy apache none file issues
+**/none
+# Files or folders that says .here is purely here
+**/.here
+**/*.here
+# Folders that start with .local is for storage
+**/.local/
+# Files or folders that starts with .local- is for development
+**/.local-*
+# composer vendor packages inside modules
+**/fw-*/*/vendor/
